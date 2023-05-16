@@ -23,5 +23,8 @@ public class Ticket {
     private Posto seat;
     @ManyToOne
     private Utente user;
+    @ManyToOne
+    private Spettacolo spettacolo;
+
 
 }
