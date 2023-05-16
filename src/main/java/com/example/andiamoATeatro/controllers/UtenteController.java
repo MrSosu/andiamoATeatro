@@ -4,6 +4,8 @@ import com.example.andiamoATeatro.entities.Posto;
 import com.example.andiamoATeatro.entities.Spettacolo;
 import com.example.andiamoATeatro.entities.Ticket;
 import com.example.andiamoATeatro.entities.Utente;
+import com.example.andiamoATeatro.repositories.PostoRepository;
+import com.example.andiamoATeatro.repositories.SpettacoloRepository;
 import com.example.andiamoATeatro.repositories.TicketRepository;
 import com.example.andiamoATeatro.repositories.UtenteRepository;
 import com.example.andiamoATeatro.services.UtenteService;
@@ -19,7 +21,11 @@ public class UtenteController {
     @Autowired
     private UtenteRepository utenteRepository;
     @Autowired
-    private TicketRepository ticketRepository;
+    private TicketController ticketController;
+    @Autowired
+    private PostoController postoController;
+    @Autowired
+    private SpettacoloController spettacoloController;
     @Autowired
     private UtenteService utenteService;
 
@@ -53,13 +59,17 @@ public class UtenteController {
      deve calcolare il prezzo da pagare per l’utente.
      */
     @PostMapping("/purchase")
-    public double buyTicket(@RequestBody Spettacolo spettacolo, @RequestBody Posto posto, @RequestBody Utente user) {
+    public double buyTicket(@RequestHeader("user") long idUser, @RequestHeader("seat") long idSeat, @RequestHeader("show") long idShow) {
         Ticket ticket = new Ticket();
         ticket.setTimestamp(LocalDateTime.now());
-        ticket.setSeat(posto);
-        ticket.setUser(user);
-        ticketRepository.saveAndFlush(ticket);
-        return utenteService.getShowPrice(spettacolo);
+        Utente u = getUtenteById(idUser);
+        Spettacolo s = spettacoloController.getSpettacoloById(idShow);
+        Posto p = postoController.getPostoById(idSeat);
+        ticket.setUser(u);
+        ticket.setSpettacolo(s);
+        ticket.setSeat(p);
+        ticketController.createTicket(ticket);
+        return utenteService.getShowPrice(s);
     }
 
 }

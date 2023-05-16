@@ -8,6 +8,7 @@ import com.example.andiamoATeatro.entities.Posto;
 import com.example.andiamoATeatro.entities.Spettacolo;
 import com.example.andiamoATeatro.entities.Ticket;
 import com.example.andiamoATeatro.entities.Utente;
+import com.example.andiamoATeatro.exceptions.*;
 import com.example.andiamoATeatro.repositories.UtenteRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
@@ -45,48 +47,49 @@ public class UtenteInterceptor implements HandlerInterceptor {
             4) controllare che l'utente non abbia già prenotato 4 posti per quello spettacolo.
              */
             // 1)
-            Integer idUser = Integer.parseInt(request.getHeader("user"));
+
             try {
+                Integer idUser = Integer.parseInt(request.getHeader("user"));
                 Utente u = utenteController.getUtenteById(idUser);
-            }
-            catch (EntityNotFoundException e) {
-                System.out.println("User non trovato");
-                e.printStackTrace();
-                return false;
-            }
-            // 2)
-            Integer idSpettacolo = Integer.parseInt(request.getHeader("show"));
-            try {
+                Integer idSpettacolo = Integer.parseInt(request.getHeader("show"));
                 Spettacolo s = spettacoloController.getSpettacoloById(idSpettacolo);
-            }
-            catch (EntityNotFoundException e) {
-                System.out.println("Spettacolo non trovato");
-                e.printStackTrace();
-                return false;
-            }
-            // 3)
-            Integer idPosto = Integer.parseInt(request.getHeader("seat"));
-            try {
+                if (s.getOrario().isBefore(LocalDateTime.now())) {
+                    throw new ShowInThePastException();
+                }
+                Integer idPosto = Integer.parseInt(request.getHeader("seat"));
                 Posto p = postoController.getPostoById(idPosto);
+                List<Ticket> ticketsShow = ticketController.ticketShow(idSpettacolo, idPosto);
+                if (ticketsShow.size() > 0) {
+                    throw new SeatBookedYetException();
+                }
+                List<Ticket> ticketsUser = ticketController.ticketUserShow(idSpettacolo, idUser);
+                if (ticketsUser.size() >= 4) {
+                    throw new TooMuchTicketsException();
+                }
             }
             catch (EntityNotFoundException e) {
-                System.out.println("Posto non trovato");
+                e.getMessage();
                 e.printStackTrace();
                 return false;
             }
-            // cerchiamo se esiste già un ticket riferito al posto p nello spettacolo s
-            List<Ticket> ticketsShow = ticketController.ticketShow(idSpettacolo, idPosto);
-            if (ticketsShow.size() > 0) {
-                System.out.println("posto già prenotato");
+            catch (SeatBookedYetException e) {
+                e.getMessage();
+                e.printStackTrace();
                 return false;
             }
-            // 4)
-            List<Ticket> ticketsUser = ticketController.ticketUserShow(idSpettacolo, idUser);
-            if (ticketsUser.size() >= 4) {
-                System.out.println("Hai già prenotato troppi posti!");
+            catch (TooMuchTicketsException e) {
+                e.getMessage();
+                e.printStackTrace();
+                return false;
+            }
+            catch (ShowInThePastException e) {
+                e.getMessage();
+                e.printStackTrace();
                 return false;
             }
         }
         return true;
     }
+
+
 }
